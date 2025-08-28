@@ -1,28 +1,96 @@
-# This workflow will build a .NET project
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-net
-
-name: .NET
+name: Build
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ main, master ]
   pull_request:
-    branches: [ "master" ]
+    branches: [ main, master ]
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  build:
-
-    runs-on: ubuntu-latest
+  build-test-publish:
+    name: Build & Test (${{ matrix.os }} / ${{ matrix.rid }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            rid: linux-x64
+          - os: windows-latest
+            rid: win-x64
+          - os: macos-latest
+            rid: osx-x64
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: 8.0.x
-    - name: Restore dependencies
-      run: dotnet restore
-    - name: Build
-      run: dotnet build --no-restore
-    - name: Test
-      run: dotnet test --no-build --verbosity normal
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+          cache: true
+
+      - name: Restore
+        shell: bash
+        run: |
+          dotnet --info
+          dotnet restore
+
+      - name: Build (Release)
+        run: dotnet build --configuration Release --no-restore
+
+      # Optional tests: will quietly skip if there are no test projects
+      - name: Test (if any)
+        shell: bash
+        run: |
+          set -e
+          TESTS=$(git ls-files '*Tests.csproj' | wc -l | tr -d ' ')
+          if [ "$TESTS" != "0" ]; then
+            echo "Found $TESTS test project(s). Running tests…"
+            dotnet test --configuration Release --no-build --logger "trx;LogFileName=test_results.trx"
+          else
+            echo "No *Tests.csproj found. Skipping tests."
+          fi
+
+      # Find the app project to publish:
+      # Prefer TcpFuzzClient.csproj; fallback to the first csproj in repo.
+      - name: Detect project path
+        id: detect
+        shell: bash
+        run: |
+          set -e
+          PREFERRED=$(git ls-files | grep -i 'TcpFuzzClient\.csproj' || true)
+          if [ -n "$PREFERRED" ]; then
+            echo "project=$PREFERRED" >> $GITHUB_OUTPUT
+          else
+            FALLBACK=$(git ls-files '*.csproj' | head -n 1)
+            if [ -z "$FALLBACK" ]; then
+              echo "No .csproj found!" >&2
+              exit 1
+            fi
+            echo "project=$FALLBACK" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Publish (framework-dependent)
+        run: |
+          OUTDIR="out/${{ matrix.os }}-${{ matrix.rid }}"
+          dotnet publish "${{ steps.detect.outputs.project }}" \
+            --configuration Release \
+            --runtime ${{ matrix.rid }} \
+            --self-contained false \
+            --no-build \
+            -o "$OUTDIR"
+          echo "Published to $OUTDIR"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TcpFuzzClient-${{ matrix.rid }}
+          path: out/${{ matrix.os }}-${{ matrix.rid }}
+          if-no-files-found: error
