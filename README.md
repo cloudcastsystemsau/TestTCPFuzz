@@ -1,6 +1,6 @@
 # TcpFuzzClient Test Documentation
 
-[![Build](https://github.com/cloudcastsystemsau/TestTCPFuzz/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/cloudcastsystemsau/TestTCPFuzz/actions/workflows/build.yml)
+[![Build](https://github.com/cloudcastsystemsau/TestTCPFuzz/actions/workflows/dotnet.yml/badge.svg?branch=main)](https://github.com/cloudcastsystemsau/TestTCPFuzz/actions/workflows/dotnet.yml)
 [![.NET 8](https://img.shields.io/badge/.NET-8.0-blueviolet)](https://dotnet.microsoft.com/)
 [![License](https://img.shields.io/github/license/cloudcastsystemsau/TestTCPFuzz)](https://github.com/cloudcastsystemsau/TestTCPFuzz/blob/main/LICENSE)
 ![Platforms](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey)
