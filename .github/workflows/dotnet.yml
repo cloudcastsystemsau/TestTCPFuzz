@@ -34,7 +34,7 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
-          cache: true
+          # cache disabled: no packages.lock.json present
 
       - name: Restore
         shell: bash
@@ -45,7 +45,6 @@ jobs:
       - name: Build (Release)
         run: dotnet build --configuration Release --no-restore
 
-      # Optional tests: will quietly skip if there are no test projects
       - name: Test (if any)
         shell: bash
         run: |
@@ -58,8 +57,6 @@ jobs:
             echo "No *Tests.csproj found. Skipping tests."
           fi
 
-      # Find the app project to publish:
-      # Prefer TcpFuzzClient.csproj; fallback to the first csproj in repo.
       - name: Detect project path
         id: detect
         shell: bash
