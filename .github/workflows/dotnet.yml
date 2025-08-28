@@ -1,45 +1,35 @@
-# This workflow will build a .NET project and create a GitHub Release on tag push
 name: .NET
 
 on:
   push:
     branches: [ "master" ]
-    tags: [ "v*" ]       # <— add this to trigger releases when pushing tags like v0.1.0
   pull_request:
     branches: [ "master" ]
-  workflow_dispatch:
 
 jobs:
   build:
+
     runs-on: ubuntu-latest
-    permissions:
-      contents: write     # <— needed to create a release
 
     steps:
     - uses: actions/checkout@v4
-
     - name: Setup .NET
-    - uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 8.0.x
-
     - name: Restore dependencies
       run: dotnet restore
-
     - name: Build
-      run: dotnet build --no-restore --configuration Release
-
+      run: dotnet build --no-restore
     - name: Test
-      run: dotnet test --no-build --configuration Release --verbosity normal
-
-    # --- Release steps (only run when this is a tag build) ---
+      run: dotnet test --no-build --verbosity normal
+       # --- Release steps (only run when this is a tag build) ---
     - name: Publish app
       if: startsWith(github.ref, 'refs/tags/')
       run: |
         dotnet publish --configuration Release -o publish
         (cd publish && zip -r ../TcpFuzzClient-${{ github.ref_name }}.zip .)
         ls -lh TcpFuzzClient-${{ github.ref_name }}.zip
-
     - name: Create GitHub Release
       if: startsWith(github.ref, 'refs/tags/')
       uses: softprops/action-gh-release@v2
